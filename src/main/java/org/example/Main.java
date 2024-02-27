@@ -1,13 +1,7 @@
 package org.example;
 
-import org.apache.commons.compress.archivers.sevenz.SevenZArchiveEntry;
-import org.apache.commons.compress.archivers.sevenz.SevenZFile;
-
 import java.io.*;
-import java.net.URL;
-import java.nio.file.Files;
 import java.util.*;
-import java.util.zip.GZIPInputStream;
 
 public class Main {
 
@@ -20,87 +14,54 @@ public class Main {
 
     private static int lengthMax; //максимальная длина строки
 
-    private static Unzipper unzipper;
     private static final String DELIMITER = ";";
-    private static final String EMPTY = "";
-    private static final String PATH = "src/main/resources/";
-    private static final String SAMPLESTR = "\"\\d*\\.\\d*\"";
-    private static String urlFile = "https://github.com/PeacockTeam/new-job/releases/download/v1.0/lng-big.7z";
 
-    private static String pathNameFileArchive;
-    private static String pathNameFile;
-    private static String outputFileName;
+    private static final String SAMPLESTR = "\".*\"";
+
+    private static String inputFileName;
+
+    private static String outputFileName = "out.txt";
 
 
     public static void main(String[] args) throws IOException {
-
-        outputFileName = args[0];
-
-        String fileArchivaName = urlFile.substring(urlFile.lastIndexOf("/") + 1);
-        pathNameFileArchive = PATH + fileArchivaName;
-        // скачивание файла
-        downLoadFile();
-
-        // разархивирование файла
-        String extension = fileArchivaName.substring(fileArchivaName.lastIndexOf(".") + 1);
-
-        if (extension.equals("7z")) {
-            unzipper = new Unzipper() {
-                @Override
-                public String unzip(String pathNameFileArchive) {
-                    try (SevenZFile sevenZFile = new SevenZFile(new File(pathNameFileArchive))) {
-                        Iterable<SevenZArchiveEntry> entrys = sevenZFile.getEntries();
-                        Iterator iterator = entrys.iterator();
-                        if (iterator.hasNext()) {
-                            SevenZArchiveEntry entry = sevenZFile.getNextEntry();
-                            pathNameFile = PATH + entry.getName();
-                            try (OutputStream os = new FileOutputStream(pathNameFile)) {
-                                byte[] buffer = new byte[8192];//
-                                int count;
-                                while ((count = sevenZFile.read(buffer, 0, buffer.length)) > -1) {
-                                    os.write(buffer, 0, count);
-                                }
-                            }
-                        }
-                        return pathNameFile;
-                    } catch (IOException e) {
-                        throw new RuntimeException();
-                    }
-                }
-            };
-        } else if (extension.equals("gz")) {
-            unzipper = new Unzipper() {
-                @Override
-                public String unzip(String pathNameFileArchive) {
-                    String pathNameFile = pathNameFileArchive.substring(0, pathNameFileArchive.lastIndexOf("."));
-                    try (FileInputStream fis = new FileInputStream(pathNameFileArchive);
-                         GZIPInputStream gis = new GZIPInputStream(fis);
-                         FileOutputStream fos = new FileOutputStream(pathNameFile)) {
-                        byte[] buffer = new byte[1024];
-                        int len;
-                        while ((len = gis.read(buffer)) != -1) {
-                            fos.write(buffer, 0, len);
-                        }
-                        return pathNameFile;
-                    } catch (IOException e) {
-                        throw new RuntimeException();
-                    }
-                }
-            };
-        } else {
-            throw new RuntimeException("Не удалось разархивировать файл");
-        }
-
-        pathNameFile = unzipper.unzip(pathNameFileArchive);
-
         long begin = System.currentTimeMillis();
+        inputFileName = args[0];
+        setUniqueStr = new HashSet<>();
+        lengthMax = 0;
 
 
         //считываем строки из файла, помещаем в set
 
-        setUniqueStr = new HashSet<>();
+        try (BufferedReader reader = new BufferedReader(new FileReader(inputFileName))) {
+            String line;
+            while ((line = reader.readLine()) != null) {
+                String[] arr = line.split(DELIMITER);
+                if (arr.length == 0) {
+                    continue;
+                }
 
-        readingFromFile(pathNameFile);
+                if (lengthMax < arr.length) {
+                    lengthMax = arr.length;
+                }
+
+                Map<Integer, String> mapStr = new HashMap<>();
+                boolean isWrongStr = false;
+                for (int i = 0; i < arr.length; i++) {
+                    if (!arr[i].equals("") && !arr[i].equals("\"\"")&& !arr[i].matches(SAMPLESTR)) {
+                        isWrongStr = true;
+                        break;
+                    }
+                    if (!arr[i].equals("") && !arr[i].equals("\"\"")) {
+                        mapStr.put(i, arr[i]);
+                    }
+                }
+
+                if (!isWrongStr && !mapStr.isEmpty()) {
+                    setUniqueStr.add(mapStr);
+                }
+            }
+        }
+
 
         //переводим набор срок в список
         listUniqueStr = new ArrayList<>(setUniqueStr);
@@ -143,45 +104,6 @@ public class Main {
 
     }
 
-    private static void downLoadFile() throws IOException {
-        URL url = new URL(urlFile);
-        InputStream inputStream = url.openStream();
-        Files.copy(inputStream, new File(pathNameFileArchive).toPath());
-
-    }
-
-    private static void readingFromFile(String pathNameFile) throws IOException {
-        try (BufferedReader reader = new BufferedReader(new FileReader(pathNameFile))) {
-            String line;
-            while ((line = reader.readLine()) != null) {
-
-                String[] arr = line.split(DELIMITER);
-                if (arr.length == 0) {
-                    continue;
-                }
-
-                if (lengthMax < arr.length) {
-                    lengthMax = arr.length;
-                }
-
-                Map<Integer, String> mapStr = new HashMap<>();
-                boolean isWrongStr = false;
-                for (int i = 0; i < arr.length; i++) {
-                    if (!arr[i].equals(EMPTY) && !arr[i].matches(SAMPLESTR)) {
-                        isWrongStr = true;
-                        break;
-                    }
-                    if (!arr[i].equals(EMPTY)) {
-                        mapStr.put(i, arr[i]);
-                    }
-                }
-
-                if (!isWrongStr && !mapStr.isEmpty()) {
-                    setUniqueStr.add(mapStr);
-                }
-            }
-        }
-    }
 
     private static void generatingColumnsMaps() {
         for (int i = 0; i < lengthMax; i++) {
