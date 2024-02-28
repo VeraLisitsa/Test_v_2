@@ -6,6 +6,9 @@ import java.util.*;
 public class Main {
 
     private static Set<Map<Integer, String>> setUniqueStr; // набор всех уникальных строчек (списки элементов)
+    private static List<Map<Integer, String>> fullList;//список всех уникальных строчек
+
+    private static  Set<Integer> haveDuplicateNumberStr;//нвбор номеров строк из fullList, которые имеют совпадение значений с другими строками
     private static List<Map<Integer, String>> listUniqueStr; //список всех уникальных строчек
     private static Set<Set<Integer>> allGroups; //набор групп номеров строчек
     private static List<Map<String, Set<Integer>>> listMapNumberPosition; // набор мап с наборами зачение одного столбца
@@ -63,11 +66,27 @@ public class Main {
         }
 
 
-        //переводим набор срок в список
-        listUniqueStr = new ArrayList<>(setUniqueStr);
+        //создаем из набора список всех уникальных строчек
+        fullList = new ArrayList<>(setUniqueStr);
 
         setUniqueStr.clear();
 
+        //создаем набор номеров строк из fullList, которые имеют совпадения значений столбцов
+        haveDuplicateNumberStr = new HashSet<>();
+
+        //вносим в haveDuplicateNumberStr номера строк, которые имеют повтроряющиеся значения с другими строками
+
+        generatingHaveDuplicateNumberStr();
+
+        //создаем список строк, которые имеют совпадение значений с другими строками
+        listUniqueStr = new ArrayList<>();
+        //заполняем список строк для распределения по группам
+        for (Integer number : haveDuplicateNumberStr) {
+            listUniqueStr.add(fullList.get(number));
+        }
+
+        haveDuplicateNumberStr.clear();
+        fullList.clear();
 
         //разбиваем все столбцы на мапы, номер мапы - номер столбца (начиная с 0), ключ - элемент,
         //значение - набор их номеров строк из  listUniqueStr, где это значение
@@ -103,6 +122,27 @@ public class Main {
         System.out.println("Затрачено: " + (end - begin) + "мс");
 
     }
+
+    private static void generatingHaveDuplicateNumberStr(){
+        //проходимся циклом по номерам столбцов
+        //находим совпадения значений в столбцах, добавляем номера этих строк в haveDuplicateNumberStr
+        for (int i = 0; i < lengthMax; i++) {
+            Map<String, Integer> uniqueElements = new HashMap<>();
+            for (int j = 0; j < fullList.size(); j++) {
+                if (fullList.get(j).containsKey(i)) {
+                    if (!uniqueElements.containsKey(fullList.get(j).get(i))) {
+                        uniqueElements.put(fullList.get(j).get(i), j);
+                    } else {
+                        haveDuplicateNumberStr.add(j);
+                        haveDuplicateNumberStr.add(uniqueElements.get(fullList.get(j).get(i)));
+                    }
+                }
+            }
+            uniqueElements.clear();
+        }
+
+    }
+
 
 
     private static void generatingColumnsMaps() {
